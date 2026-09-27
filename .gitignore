@@ -1,0 +1,35 @@
+node_modules
+.pnp
+.pnp.js
+
+.next
+out
+build
+dist
+
+coverage
+.nyc_output
+test-results
+playwright-report
+blob-report
+.playwright
+
+.env
+.env.local
+.env*.local
+
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# NOTE: public/fonts/*.ttf is intentionally NOT ignored. The PDF renderer needs
+# Inter for the ₹ glyph on every invoice, and vendoring the four files makes
+# builds hermetic instead of depending on a CDN being reachable at build time.
+supabase/.temp
+supabase/.branches

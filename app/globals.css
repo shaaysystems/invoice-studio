@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Neutral application shell. Brand colour lives inside the invoice only. */
+  --color-shell-50: #fafaf9;
+  --color-shell-100: #f4f4f2;
+  --color-shell-200: #e8e8e4;
+  --color-shell-300: #d6d6d0;
+  --color-shell-500: #79796f;
+  --color-shell-700: #3f3f3a;
+  --color-shell-900: #18181a;
+
+  --radius-panel: 14px;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-shell-50);
+    color: var(--color-shell-900);
+    font-family: var(--font-sans);
+  }
+
+  /* Visible, consistent focus for keyboard users. */
+  :focus-visible {
+    outline: 2px solid var(--color-shell-900);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  [data-invoice-page] {
+    /* Exports must never inherit shell styling. */
+    color-scheme: only light;
+  }
+}
+
+@layer utilities {
+  .invoice-scroll {
+    scrollbar-width: thin;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .tracked-label {
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  [data-invoice-page] {
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+  }
+}
