@@ -17,9 +17,8 @@ value:
 What is genuinely expensive is *rediscovering decisions*, not *reading files*.
 That is what this document is for.
 
-If you only need "what did I change today", that is the one thing this project
-still cannot answer — see **Not a git repo** below. It is the highest-value
-remaining improvement.
+If you only need "what did I change today", `git diff` answers it. See
+**Version control** below.
 
 ## Current state
 
@@ -98,8 +97,9 @@ anything without knowing which config produced it.
 3. **`supabase db push`** — applies `supabase/migrations/0001_init.sql`
    (tables, the `invoice-assets` bucket, and its `storage.objects` RLS
    policies).
-4. **This is not a git repo yet.** `git init` + push for Vercel's Git
-   integration, or just use the `vercel` CLI.
+4. **Push the existing local git repo** to a remote for Vercel's Git
+   integration, or just use the `vercel` CLI. (Local git is done; only the
+   remote is missing.)
 
 The app deliberately boots in **guest mode** when Supabase is unconfigured, so
 it will deploy and run with zero secrets — you just get no sign-in and no cloud
@@ -188,13 +188,24 @@ regression. Left unfixed deliberately. If you pick it up: compare
 accounting in `lib/invoice/layout-metrics.ts` — the two engines round row
 heights differently.
 
-## Not a git repo
+## Version control
 
-Still true, and it is the main reason a resumed session costs more than it
-should: there is no way to ask "what changed since yesterday" without re-reading
-files. `git init` + a first commit would make that a `git diff`, and would also
-unblock Vercel's Git integration (see Deploy steps). Not done here because it is
-a project-setup decision, not a code change.
+`git init` has been done, on branch `main`, with one commit (`ce5e6d7`) holding
+the whole tree as it stood at the end of the QR session. Local only — no remote.
+
+So "what did I change today" is now `git diff` / `git status`, which is the
+cheapest possible answer. Before you start work, `git status` should be clean; if
+it is not, something is uncommitted and worth looking at first.
+
+Two rules that matter here:
+
+- **Commit before risky changes.** There is now a known-good restore point.
+- **Do not commit `.env.local`.** It is ignored, and `.env.example` is the
+  tracked template with empty values. Guest mode works with no secrets set.
+
+Still outstanding: there is no remote, so nothing is backed up off this machine.
+A private GitHub repo would fix that and unblock Vercel's Git integration (see
+Deploy steps).
 
 ## Test plan
 
