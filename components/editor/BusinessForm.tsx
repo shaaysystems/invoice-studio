@@ -4,6 +4,7 @@ import { useInvoiceStore } from "@/lib/store/invoice-store";
 import { validateGSTIN, validatePAN } from "@/lib/validation/gstin";
 import { Disclosure, Field, Input, SectionCard, Textarea } from "@/components/ui";
 import { ImageUploader } from "./ImageUploader";
+import { SavedProfileLoader } from "./SavedProfileLoader";
 
 export function BusinessForm({ authenticated }: { authenticated: boolean }) {
   const business = useInvoiceStore((s) => s.invoice.business);
@@ -18,6 +19,10 @@ export function BusinessForm({ authenticated }: { authenticated: boolean }) {
 
   return (
     <SectionCard title="Your business" description="This appears as the sender on your invoice.">
+      <Disclosure title="Load these details from a saved business profile" badge={business.name ? undefined : "Starts blank"}>
+        <SavedProfileLoader authenticated={authenticated} />
+      </Disclosure>
+
       <Field label="Business name" hint="Shown as the invoice sender.">
         {(p) => (
           <Input
@@ -219,7 +224,11 @@ export function BusinessForm({ authenticated }: { authenticated: boolean }) {
             </Field>
           ))}
         </div>
-        <p className="text-[11px] text-shell-500">Only the links you fill in appear on the invoice.</p>
+        <p className="text-[11px] text-shell-500">
+          Each one you fill in is printed as an icon in the invoice footer, and stays clickable in the
+          exported PDF. A handle is enough — <span className="font-mono">@studio</span> works as well as a
+          full link.
+        </p>
       </Disclosure>
     </SectionCard>
   );

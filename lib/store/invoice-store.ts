@@ -2,9 +2,10 @@
 
 import { create } from "zustand";
 import { calculateInvoiceTotals } from "@/lib/invoice/calculate";
-import { createEmptyInvoice, createEmptyItem, newId } from "@/lib/invoice/defaults";
+import { createEmptyInvoice, createEmptyItem, applyProfileToInvoice, newId } from "@/lib/invoice/defaults";
 import { paginateInvoiceItems, type PaginationResult } from "@/lib/invoice/paginate";
 import { localStore } from "@/lib/storage/local";
+import type { BusinessProfile } from "@/types/business";
 import type {
   Address,
   ClientParty,
@@ -59,6 +60,7 @@ interface InvoiceStoreState {
         | "globalDiscountType"
         | "globalDiscountValue"
         | "shippingMinor"
+        | "advanceMinor"
         | "roundOffEnabled"
         | "amountInWordsEnabled"
       >
@@ -71,6 +73,9 @@ interface InvoiceStoreState {
   patchSignature: (patch: Partial<SignatureBlock>) => void;
   patchLogoOverride: (url: string) => void;
   patchBrand: (patch: Partial<InvoiceBrand>) => void;
+
+  /** Copies sender details, payment, signature, terms and notes off a saved profile. */
+  applyBusinessProfile: (profile: BusinessProfile) => void;
 
   addItem: () => void;
   updateItem: (id: string, patch: Partial<InvoiceItem>) => void;
@@ -162,6 +167,7 @@ export const useInvoiceStore = create<InvoiceStoreState>((set, get) => {
       mutate((inv) => ({ ...inv, signature: { ...inv.signature, ...patch } })),
     patchLogoOverride: (url) => mutate((inv) => ({ ...inv, logoOverrideUrl: url })),
     patchBrand: (patch) => mutate((inv) => ({ ...inv, brand: { ...inv.brand, ...patch } })),
+    applyBusinessProfile: (profile) => mutate((inv) => applyProfileToInvoice(inv, profile)),
 
     addItem: () =>
       mutate((inv) => {

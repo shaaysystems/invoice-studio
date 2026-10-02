@@ -33,7 +33,8 @@ export function useAutosave(enabled: boolean) {
         return;
       }
 
-      const result = await saveInvoiceAction(invoice);
+      // Linking the profile is what keeps invoice numbers unique per business.
+      const result = await saveInvoiceAction(invoice, "draft", invoice.businessProfileId || null);
       // Validation failures are expected mid-typing — keep the draft dirty, not errored.
       setSaveState(result.ok ? "saved" : result.issues?.length ? "dirty" : "error");
     }, DEBOUNCE_MS);

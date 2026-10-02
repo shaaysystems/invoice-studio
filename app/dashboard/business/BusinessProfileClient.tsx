@@ -2,8 +2,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import {
-  fetchBusinessProfileAction,
+  fetchBusinessProfilesAction,
   saveBusinessProfileAction,
 } from "@/lib/actions/business";
 import { createDefaultBusinessProfile } from "@/lib/invoice/defaults";
@@ -29,29 +31,42 @@ import type { Address } from "@/types/invoice";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
-export function BusinessProfileClient({ authenticated }: { authenticated: boolean }) {
+export function BusinessProfileClient({
+  profileId,
+  authenticated,
+}: {
+  profileId: string;
+  authenticated: boolean;
+}) {
   const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [existing, setExisting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // An id with no row behind it is a new profile, not a 404 — the list page
+      // generates the id so the first save lands on the URL being viewed.
       if (authenticated) {
-        const result = await fetchBusinessProfileAction();
+        const result = await fetchBusinessProfilesAction();
         if (cancelled) return;
-        if (result.ok) {
-          setProfile(result.data ?? createDefaultBusinessProfile("cloud"));
+        if (result.ok && result.data) {
+          const found = result.data.profiles.find((entry) => entry.id === profileId);
+          setExisting(Boolean(found));
+          setProfile(found ?? { ...createDefaultBusinessProfile("cloud"), id: profileId });
           return;
         }
         setMessage(result.error ?? "We couldn't load your profile. You can still edit and save it.");
       }
-      setProfile(localStore.getBusinessProfile() ?? createDefaultBusinessProfile());
+      const local = localStore.getBusinessProfileById(profileId);
+      setExisting(Boolean(local));
+      setProfile(local ?? { ...createDefaultBusinessProfile(), id: profileId });
     })();
     return () => {
       cancelled = true;
     };
-  }, [authenticated]);
+  }, [authenticated, profileId]);
 
   const patch = useCallback((updater: (current: BusinessProfile) => BusinessProfile) => {
     setProfile((current) => (current ? { ...updater(current), updatedAt: new Date().toISOString() } : current));
@@ -109,12 +124,21 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
         setMessage(result.error ?? "We couldn't save your profile.");
         return;
       }
+      // Mirror to this browser too: new invoices prefill from localStorage, and
+      // a stale local copy would otherwise show blank sender details.
+      localStore.saveBusinessProfile({ ...profile, updatedAt: new Date().toISOString() });
+      setExisting(true);
       setSaveState("saved");
-      setMessage("Profile saved to your account.");
+      setMessage(
+        existing
+          ? "Profile saved to your account."
+          : "Profile created. Mark it as your default if you want new invoices to start from it.",
+      );
       return;
     }
 
     const stored = localStore.saveBusinessProfile(profile);
+    setExisting(true);
     setSaveState(stored ? "saved" : "error");
     setMessage(
       stored
@@ -143,11 +167,21 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
   return (
     <AppShell authenticated={authenticated}>
       <div className="space-y-4 p-6">
+        <Link
+          href="/dashboard/business"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-shell-500 hover:text-shell-900"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden />
+          All business profiles
+        </Link>
+
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-shell-900">Business profile</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-shell-900">
+              {existing ? party.name || "Untitled business" : "New business profile"}
+            </h1>
             <p className="mt-1 text-sm text-shell-500">
-              Saved once, then applied to every new invoice. Issued invoices keep their own copy.
+              Applied to new invoices you start from this profile. Issued invoices keep their own copy.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -161,7 +195,7 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
                     : "All changes saved"}
             </span>
             <Button type="button" variant="primary" onClick={() => void handleSave()}>
-              Save profile
+              {existing ? "Save profile" : "Create profile"}
             </Button>
           </div>
         </div>
@@ -221,16 +255,6 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
 
           <Disclosure title="Address and legal details">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Website" optional>
-                {(p) => (
-                  <Input
-                    {...p}
-                    value={party.socials.website}
-                    onChange={(e) => patchSocials({ website: e.target.value })}
-                    placeholder="studio.com"
-                  />
-                )}
-              </Field>
               <Field label="Legal name" optional>
                 {(p) => (
                   <Input
@@ -343,6 +367,7 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
             <div className="grid gap-4 sm:grid-cols-2">
               {(
                 [
+                  ["website", "Website"],
                   ["instagram", "Instagram"],
                   ["linkedin", "LinkedIn"],
                   ["twitter", "X / Twitter"],
@@ -355,6 +380,11 @@ export function BusinessProfileClient({ authenticated }: { authenticated: boolea
                 </Field>
               ))}
             </div>
+            <p className="text-[11px] text-shell-500">
+              Each one you fill in is printed as an icon in the invoice footer, and stays clickable in the
+              exported PDF. A handle is enough — <span className="font-mono">@studio</span> works as well as a
+              full link.
+            </p>
           </Disclosure>
         </SectionCard>
 

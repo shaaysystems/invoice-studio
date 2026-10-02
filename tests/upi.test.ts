@@ -111,7 +111,7 @@ describe("paymentQrPayload", () => {
     const invoice = invoiceWith({ upiId: "northstar@okhdfcbank" });
     invoice.payment.qr = { mode: "upi", imageUrl: "", label: "Scan to pay", includeAmount: true };
 
-    const payload = paymentQrPayload(invoice, { grandTotalMinor: 500000 });
+    const payload = paymentQrPayload(invoice, { balanceDueMinor: 500000 });
     expect(payload).toContain("am=5000.00");
   });
 
@@ -119,7 +119,7 @@ describe("paymentQrPayload", () => {
     const invoice = invoiceWith({ upiId: "northstar@okhdfcbank" });
     invoice.payment.qr = { mode: "upi", imageUrl: "", label: "Scan to pay", includeAmount: false };
 
-    const payload = paymentQrPayload(invoice, { grandTotalMinor: 500000 });
+    const payload = paymentQrPayload(invoice, { balanceDueMinor: 500000 });
     expect(payload).not.toContain("am=");
   });
 });
@@ -127,18 +127,18 @@ describe("paymentQrPayload", () => {
 describe("resolvePaymentQr", () => {
   it("returns null when the mode is none", () => {
     const invoice = invoiceWith({ upiId: "northstar@okhdfcbank" });
-    expect(resolvePaymentQr(invoice, { grandTotalMinor: 500000 })).toBeNull();
+    expect(resolvePaymentQr(invoice, { balanceDueMinor: 500000 })).toBeNull();
   });
 
   it("returns null for a generated code with no valid UPI ID", () => {
     const invoice = invoiceWith({ upiId: "nonsense" });
     invoice.payment.qr = { mode: "upi", imageUrl: "", label: "Scan to pay", includeAmount: true };
-    expect(resolvePaymentQr(invoice, { grandTotalMinor: 500000 })).toBeNull();
+    expect(resolvePaymentQr(invoice, { balanceDueMinor: 500000 })).toBeNull();
   });
 
   it("returns null for an upload with no image", () => {
     const invoice = invoiceWith({});
     invoice.payment.qr = { mode: "upload", imageUrl: "", label: "", includeAmount: true };
-    expect(resolvePaymentQr(invoice, { grandTotalMinor: 500000 })).toBeNull();
+    expect(resolvePaymentQr(invoice, { balanceDueMinor: 500000 })).toBeNull();
   });
 });

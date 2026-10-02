@@ -3,8 +3,9 @@
 import { useInvoiceStore } from "@/lib/store/invoice-store";
 import { validateGSTIN } from "@/lib/validation/gstin";
 import { Disclosure, Field, Input, SectionCard, Switch, Textarea } from "@/components/ui";
+import { ImageUploader } from "./ImageUploader";
 
-export function ClientForm() {
+export function ClientForm({ authenticated }: { authenticated: boolean }) {
   const client = useInvoiceStore((s) => s.invoice.client);
   const patchClient = useInvoiceStore((s) => s.patchClient);
   const patchAddress = useInvoiceStore((s) => s.patchClientAddress);
@@ -25,6 +26,16 @@ export function ClientForm() {
           />
         )}
       </Field>
+
+      <ImageUploader
+        label="Client logo"
+        hint="Printed beside the client name in the Bill to block. PNG, JPG, WEBP or SVG up to 2 MB. Applies to this invoice only."
+        kind="logo"
+        shape="square"
+        url={client.logoUrl}
+        onChange={(logoUrl) => patchClient({ logoUrl })}
+        authenticated={authenticated}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Email" optional>

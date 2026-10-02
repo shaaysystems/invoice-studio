@@ -1,11 +1,11 @@
 // app/dashboard/business/page.tsx
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { BusinessProfileClient } from "./BusinessProfileClient";
+import { BusinessProfileList } from "./BusinessProfileList";
 
-export const metadata: Metadata = { title: "Business profile", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Business profiles", robots: { index: false, follow: false } };
 
 export default async function BusinessProfilePage() {
   const user = await getCurrentUser();
-  return <BusinessProfileClient authenticated={Boolean(user)} />;
+  return <BusinessProfileList authenticated={Boolean(user)} />;
 }

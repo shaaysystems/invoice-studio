@@ -125,7 +125,8 @@ export function PaymentAndTermsForm({ authenticated }: { authenticated: boolean 
         </Disclosure>
 
         <div className="rounded-lg bg-shell-100 px-3 py-2.5 text-[11px] text-shell-600">
-          Amount payable: <strong className="tabular">{formatINR(totals.grandTotalMinor)}</strong>
+          {totals.advanceMinor > 0 ? "Balance payable" : "Amount payable"}:{" "}
+          <strong className="tabular">{formatINR(totals.balanceDueMinor)}</strong>
         </div>
 
         <Disclosure

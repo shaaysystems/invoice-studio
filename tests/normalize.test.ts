@@ -65,6 +65,23 @@ describe("normalizeInvoice", () => {
     expect(normalizeInvoice(legacy)!.logoOverrideUrl).toBe("");
   });
 
+  it("keeps a pre-client-logo invoice working", () => {
+    const legacy = createEmptyInvoice() as unknown as Record<string, unknown>;
+    delete (legacy.client as Record<string, unknown>).logoUrl;
+
+    expect(normalizeInvoice(legacy)!.client.logoUrl).toBe("");
+  });
+
+  it("preserves a stored client logo", () => {
+    const base = createEmptyInvoice();
+    const invoice = normalizeInvoice({
+      ...base,
+      client: { ...base.client, logoUrl: "https://x.co/client.png" },
+    });
+
+    expect(invoice!.client.logoUrl).toBe("https://x.co/client.png");
+  });
+
   it("preserves a stored QR and logo override", () => {
     const invoice = normalizeInvoice({
       ...createEmptyInvoice(),
@@ -78,6 +95,19 @@ describe("normalizeInvoice", () => {
     expect(invoice!.logoOverrideUrl).toBe("https://x.co/alt.png");
     expect(invoice!.payment.qr.mode).toBe("upload");
     expect(invoice!.payment.qr.includeAmount).toBe(false);
+  });
+
+  it("keeps a pre-profile-link invoice working", () => {
+    const legacy = createEmptyInvoice() as unknown as Record<string, unknown>;
+    delete legacy.businessProfileId;
+
+    expect(normalizeInvoice(legacy)!.businessProfileId).toBe("");
+  });
+
+  it("preserves the linked business profile id", () => {
+    const invoice = normalizeInvoice({ ...createEmptyInvoice(), businessProfileId: "abc-123" });
+
+    expect(invoice!.businessProfileId).toBe("abc-123");
   });
 
   it("repairs a malformed QR mode without discarding the image", () => {

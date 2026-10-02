@@ -54,10 +54,12 @@ export function ImageUploader({ label, hint, kind, url, onChange, authenticated,
         <span className="text-[10px] text-shell-500">Optional</span>
         {hint ? (
           <Tooltip text={hint}>
+            {/* Decorative: the tooltip span carries the same text and is already
+                in the accessibility tree, so labelling the icon too would
+                announce the hint twice and shadow nearby field labels. */}
             <span
               tabIndex={0}
-              role="img"
-              aria-label={hint}
+              aria-hidden="true"
               className="grid size-3.5 cursor-help place-items-center rounded-full border border-shell-300 text-[8px] text-shell-500"
             >
               i

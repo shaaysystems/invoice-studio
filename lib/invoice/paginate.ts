@@ -1,5 +1,5 @@
 import type { Invoice, InvoiceItem, InvoiceLineTotals, InvoiceTotals } from "@/types/invoice";
-import { CONTENT_HEIGHT, CONTINUATION_HEADER_HEIGHT, FOOTER_HEIGHT, ROW, computeInvoiceMetrics, type InvoiceMetrics } from "./layout-metrics";
+import { CONTENT_HEIGHT, CONTINUATION_HEADER_HEIGHT, ROW, computeInvoiceMetrics, type InvoiceMetrics } from "./layout-metrics";
 
 export interface PaginatedRow {
   /** 1-based, continuous across pages. */
@@ -49,8 +49,13 @@ export function paginateInvoiceItems(
   }));
 
   const firstPageCapacity =
-    CONTENT_HEIGHT - metrics.identityHeaderHeight - metrics.partiesHeight - FOOTER_HEIGHT - ROW.headerHeight;
-  const nextPageCapacity = CONTENT_HEIGHT - CONTINUATION_HEADER_HEIGHT - FOOTER_HEIGHT - ROW.headerHeight;
+    CONTENT_HEIGHT -
+    metrics.identityHeaderHeight -
+    metrics.partiesHeight -
+    metrics.footerHeight -
+    ROW.headerHeight;
+  const nextPageCapacity =
+    CONTENT_HEIGHT - CONTINUATION_HEADER_HEIGHT - metrics.footerHeight - ROW.headerHeight;
 
   const pages: InvoicePageModel[] = [];
   let cursor = 0;

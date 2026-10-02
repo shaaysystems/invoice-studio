@@ -26,7 +26,7 @@ export interface ResolvedPaymentQr {
 /** Encoded payload behind the printed code — also handy for tests and debugging. */
 export function paymentQrPayload(
   invoice: Invoice,
-  totals: Pick<InvoiceTotals, "grandTotalMinor">,
+  totals: Pick<InvoiceTotals, "balanceDueMinor">,
 ): string | null {
   const { qr, upiId } = invoice.payment;
   if (qr.mode === "none") return null;
@@ -34,7 +34,7 @@ export function paymentQrPayload(
   return buildUpiPaymentUri({
     upiId,
     payeeName: invoice.business.name,
-    amountMinor: qr.includeAmount ? totals.grandTotalMinor : null,
+    amountMinor: qr.includeAmount ? totals.balanceDueMinor : null,
     note: invoice.number ? `Invoice ${invoice.number}` : "",
   });
 }
@@ -84,7 +84,7 @@ export function qrPngDataUrl(payload: string, edgePx: number = QR_EDGE_PX): stri
 /** Returns null whenever the invoice should print no code at all. */
 export function resolvePaymentQr(
   invoice: Invoice,
-  totals: Pick<InvoiceTotals, "grandTotalMinor">,
+  totals: Pick<InvoiceTotals, "balanceDueMinor">,
 ): ResolvedPaymentQr | null {
   const { qr } = invoice.payment;
   if (!hasPaymentQr(invoice)) return null;
@@ -109,7 +109,7 @@ export function resolvePaymentQr(
   return {
     src: qrPngDataUrl(payload),
     label,
-    amountText: qr.includeAmount ? formatINR(totals.grandTotalMinor, { compactDecimals: true }) : "",
+    amountText: qr.includeAmount ? formatINR(totals.balanceDueMinor, { compactDecimals: true }) : "",
     generated: true,
   };
 }

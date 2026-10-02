@@ -145,6 +145,13 @@ export function calculateInvoiceTotals(invoice: Invoice): InvoiceTotals {
   const shippingMinor = Math.max(0, Math.trunc(invoice.shippingMinor || 0));
   const preRoundMinor = taxableMinor + taxMinor + shippingMinor;
   const roundOff = invoice.roundOffEnabled ? roundOffMinor(preRoundMinor) : 0;
+  const grandTotalMinor = preRoundMinor + roundOff;
+
+  // --- 4b. Advance already received, deducted from what is payable ---
+  // Clamped to the total: a client cannot have paid more than the invoice is
+  // worth, and an over-typed advance must not produce a negative balance.
+  const advanceMinor = Math.min(Math.max(0, Math.trunc(invoice.advanceMinor || 0)), grandTotalMinor);
+  const balanceDueMinor = grandTotalMinor - advanceMinor;
 
   // --- 5. Rate-wise buckets for the GST summary ---
   const byRate = new Map<number, TaxBucket>();
@@ -172,7 +179,9 @@ export function calculateInvoiceTotals(invoice: Invoice): InvoiceTotals {
     taxMinor,
     shippingMinor,
     roundOffMinor: roundOff,
-    grandTotalMinor: preRoundMinor + roundOff,
+    grandTotalMinor,
+    advanceMinor,
+    balanceDueMinor,
     buckets: [...byRate.values()].sort((a, b) => a.rate - b.rate),
   };
 }

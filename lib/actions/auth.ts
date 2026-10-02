@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import type { AuthFormState } from "@/types/auth";
@@ -42,7 +41,7 @@ export async function signInAction(
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Enter your email and password.", message: null };
 
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
   if (!supabase) return { error: SIGN_IN_DISABLED, message: null };
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: explain(error), message: null };
@@ -63,7 +62,7 @@ export async function signUpAction(
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: EMAIL, message: null };
   if (password.length < 8) return { error: "Use a password of at least 8 characters.", message: null };
 
-  const supabase = createClient();
+  const supabase = await createServerSupabase();
   if (!supabase) return { error: SIGN_UP_DISABLED, message: null };
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { error: explain(error), message: null };

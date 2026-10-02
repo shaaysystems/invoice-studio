@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { paginateInvoiceItems } from "@/lib/invoice/paginate";
-import { computeTableLayout, measureItemRow, estimateLines } from "@/lib/invoice/layout-metrics";
+import {
+  computeInvoiceMetrics,
+  computeTableLayout,
+  estimateLines,
+  measureItemRow,
+} from "@/lib/invoice/layout-metrics";
 import { calculateInvoiceTotals } from "@/lib/invoice/calculate";
 import { createEmptyInvoice, createEmptyItem, createLongDemoInvoice } from "@/lib/invoice/defaults";
 import { rupeesToMinor } from "@/lib/money";
@@ -150,6 +155,42 @@ describe("paginateInvoiceItems", () => {
     expect(result.pages.length).toBeGreaterThan(1);
     const seen = result.pages.flatMap((p) => p.rows.map((r) => r.item.id));
     expect(new Set(seen).size).toBe(42);
+  });
+
+  it("grows the parties block when the client column is the tallest", () => {
+    // Two contact lines (22.8pt) plus the logo (30pt) clears the 45.6pt Details
+    // column, so the bill-to column becomes the tallest and actually grows.
+    const base = {
+      ...invoiceWithItems(20),
+      client: {
+        ...createEmptyInvoice().client,
+        name: "Acme",
+        phone: "9876543210",
+        email: "ap@example.com",
+      },
+    };
+    const totals = calculateInvoiceTotals(base);
+    const withLogo = { ...base, client: { ...base.client, logoUrl: "https://x.co/client.png" } };
+
+    expect(computeInvoiceMetrics(withLogo, totals).partiesHeight).toBeGreaterThan(
+      computeInvoiceMetrics(base, totals).partiesHeight,
+    );
+    // Reserving space must never add a page.
+    expect(paginateInvoiceItems(withLogo, totals).pages.length).toBeLessThanOrEqual(
+      paginateInvoiceItems(base, totals).pages.length,
+    );
+  });
+
+  it("leaves the block height alone when another column is already taller", () => {
+    // Details is 45.6pt for an invoice with both dates; a 30pt logo fits inside
+    // that, so pagination must not shift.
+    const base = invoiceWithItems(20);
+    const totals = calculateInvoiceTotals(base);
+    const withLogo = { ...base, client: { ...base.client, logoUrl: "https://x.co/client.png" } };
+
+    expect(computeInvoiceMetrics(withLogo, totals).partiesHeight).toBe(
+      computeInvoiceMetrics(base, totals).partiesHeight,
+    );
   });
 
   it("handles an empty item list without crashing", () => {

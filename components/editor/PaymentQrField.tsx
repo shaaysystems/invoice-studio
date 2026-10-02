@@ -86,8 +86,8 @@ export function PaymentQrField({ authenticated }: { authenticated: boolean }) {
             {qr.includeAmount ? (
               <>
                 The payer opens their UPI app with{" "}
-                <strong className="tabular text-shell-700">{formatINR(totals.grandTotalMinor)}</strong> already
-                filled in, so they only confirm. It follows the invoice total as it changes.
+                <strong className="tabular text-shell-700">{formatINR(totals.balanceDueMinor)}</strong> already
+                filled in, so they only confirm. It follows the balance due as it changes.
               </>
             ) : (
               "The code carries no amount, so the payer types it in themselves."

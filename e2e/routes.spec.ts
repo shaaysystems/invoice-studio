@@ -20,13 +20,20 @@ test("every route renders without a server error", async ({ page }) => {
 
 test("new pages show their headings", async ({ page }) => {
   await page.goto("/dashboard/business");
-  await expect(page.getByRole("heading", { name: "Business profile" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Business profiles", exact: true })).toBeVisible();
   await page.goto("/dashboard/brand");
   await expect(page.getByRole("heading", { name: "Brand", exact: true })).toBeVisible();
   await page.goto("/dashboard/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await page.goto("/sign-in");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});
+
+test("a business profile editor opens from a fresh id", async ({ page }) => {
+  await page.goto("/dashboard/business");
+  await page.getByRole("button", { name: /add (your first |)business profile/i }).first().click();
+  await expect(page.getByRole("heading", { name: "New business profile" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create profile" })).toBeVisible();
 });
 
 test("404 page renders for an unknown route", async ({ page }) => {

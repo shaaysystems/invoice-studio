@@ -10,8 +10,8 @@ import {
   hasSignatureContent,
   hasTermsOrNotes,
   resolveLogoUrl,
-  visibleSocialLinks,
 } from "./presence";
+import { FOOTER_TEXT_ROW_HEIGHT, SOCIAL_FOOTER_ROW_HEIGHT, SOCIAL_ROW_HEIGHT, clickableSocials } from "./social-links";
 
 export const PAGE = {
   width: 595.28,
@@ -43,7 +43,23 @@ export const ROW = {
 } as const;
 
 export const FOOTER_HEIGHT = 22;
+/**
+ * How much taller the footer row gets when a `footer`-scale icon box shares it
+ * with the 6.9pt business name. Derived rather than guessed, so the two cannot
+ * disagree if the preset size changes.
+ */
+export const SOCIAL_FOOTER_ROW_GROWTH = Math.max(
+  0,
+  SOCIAL_FOOTER_ROW_HEIGHT - FOOTER_TEXT_ROW_HEIGHT,
+);
 export const BLOCK_GAP = 16;
+
+/**
+ * Bounding box for the client logo in the "Bill to" block. It sits beside the
+ * client name, so the block only grows when the name wraps — hence the separate
+ * height term in `measurePartiesBlock` rather than a whole extra line.
+ */
+export const CLIENT_LOGO = { width: 44, height: 30 } as const;
 
 /** Printed size of the pay-by-QR code, and the box it occupies. */
 export const QR_SIZE = 84;
@@ -136,9 +152,11 @@ export function measurePartiesBlock(invoice: Invoice): number {
     invoice.business.pan,
     invoice.business.phone,
     invoice.business.email,
-    invoice.business.socials.website,
-    visibleSocialLinks(invoice.business.socials).length > 1 ? "socials" : "",
   ]);
+
+  // The social profiles print as one fixed-height icon strip, not as text, so
+  // they contribute a flat term instead of a line each.
+  const socialRowHeight = clickableSocials(invoice.business.socials).length ? SOCIAL_ROW_HEIGHT : 0;
 
   const clientAddress = effectiveClientAddress(invoice.client);
   const clientLines = countFilled([
@@ -160,8 +178,15 @@ export function measurePartiesBlock(invoice: Invoice): number {
     invoice.taxMode === "gst" ? invoice.placeOfSupply : "",
   ]);
 
-  const tallest = Math.max(businessLines, clientLines, metaLines * 2);
-  return Math.ceil(14 + 16 + tallest * 11.4 + BLOCK_GAP);
+  // The client logo shares a row with the client name, so it reserves its own
+  // height on top of the text lines rather than counting as another line.
+  const clientLogoHeight = filled(invoice.client.logoUrl) ? CLIENT_LOGO.height : 0;
+  const tallestPt = Math.max(
+    businessLines * 11.4 + socialRowHeight,
+    clientLines * 11.4 + clientLogoHeight,
+    metaLines * 2 * 11.4,
+  );
+  return Math.ceil(14 + 16 + tallestPt + BLOCK_GAP);
 }
 
 export function measureTotalsBlock(invoice: Invoice, totals: InvoiceTotals): number {
@@ -174,6 +199,9 @@ export function measureTotalsBlock(invoice: Invoice, totals: InvoiceTotals): num
   }
   if (totals.shippingMinor > 0) rows += 1;
   if (totals.roundOffMinor !== 0) rows += 1;
+  // A recorded advance adds a "Total" line and an "Advance paid" line above
+  // the big box, which then reads "Balance due".
+  if (totals.advanceMinor > 0) rows += 2;
   const wordsHeight = invoice.amountInWordsEnabled ? 26 : 0;
   return Math.ceil(rows * 14 + 56 + wordsHeight + BLOCK_GAP);
 }
@@ -210,6 +238,16 @@ export function measureSignatureBlock(invoice: Invoice): number {
   return Math.ceil(imageHeight + textLines * 11.4 + 14 + BLOCK_GAP);
 }
 
+/**
+ * The footer row is one line of 6.9pt text, or one `footer`-scale icon box
+ * when the business has profiles to link. The taller of the two has to be
+ * reserved before painting, or the last page overflows.
+ */
+export function measureFooter(invoice: Invoice): number {
+  const hasIcons = clickableSocials(invoice.business.socials).length > 0;
+  return FOOTER_HEIGHT + (hasIcons ? SOCIAL_FOOTER_ROW_GROWTH : 0);
+}
+
 export interface InvoiceMetrics {
   table: TableLayout;
   identityHeaderHeight: number;
@@ -218,6 +256,7 @@ export interface InvoiceMetrics {
   paymentHeight: number;
   termsHeight: number;
   signatureHeight: number;
+  footerHeight: number;
   tailHeight: number;
   rowHeights: number[];
 }
@@ -238,6 +277,7 @@ export function computeInvoiceMetrics(invoice: Invoice, totals: InvoiceTotals): 
     paymentHeight,
     termsHeight,
     signatureHeight,
+    footerHeight: measureFooter(invoice),
     // Terms and payment sit side-by-side when both are short.
     tailHeight: totalsHeight + Math.max(paymentHeight, termsHeight) + signatureHeight,
     rowHeights: invoice.items.map((item) => measureItemRow(item, table)),

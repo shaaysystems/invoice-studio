@@ -307,3 +307,62 @@ describe("lineTotalsFor", () => {
     expect(lineTotalsFor(totals, "does-not-exist")).toBeUndefined();
   });
 });
+
+describe("advance paid", () => {
+  it("defaults to no advance, so the balance equals the grand total", () => {
+    const totals = calculateInvoiceTotals(invoice({ items: [item({ qty: 1, rate: 1000, taxRate: 0 })] }));
+
+    expect(totals.grandTotalMinor).toBe(100_000);
+    expect(totals.advanceMinor).toBe(0);
+    expect(totals.balanceDueMinor).toBe(100_000);
+  });
+
+  it("deducts the advance from the total while leaving the total intact", () => {
+    const totals = calculateInvoiceTotals(
+      invoice({ items: [item({ qty: 1, rate: 1000, taxRate: 0 })], advanceMinor: 25_000 }),
+    );
+
+    expect(totals.grandTotalMinor).toBe(100_000);
+    expect(totals.advanceMinor).toBe(25_000);
+    expect(totals.balanceDueMinor).toBe(75_000);
+  });
+
+  it("settles the invoice to a zero balance when the advance covers it", () => {
+    const totals = calculateInvoiceTotals(
+      invoice({ items: [item({ qty: 1, rate: 1000, taxRate: 0 })], advanceMinor: 100_000 }),
+    );
+
+    expect(totals.balanceDueMinor).toBe(0);
+  });
+
+  it("caps an over-payment at the total rather than going negative", () => {
+    const totals = calculateInvoiceTotals(
+      invoice({ items: [item({ qty: 1, rate: 1000, taxRate: 0 })], advanceMinor: 500_000 }),
+    );
+
+    expect(totals.advanceMinor).toBe(100_000);
+    expect(totals.balanceDueMinor).toBe(0);
+  });
+
+  it("ignores a negative advance", () => {
+    const totals = calculateInvoiceTotals(
+      invoice({ items: [item({ qty: 1, rate: 1000, taxRate: 0 })], advanceMinor: -5_000 }),
+    );
+
+    expect(totals.advanceMinor).toBe(0);
+    expect(totals.balanceDueMinor).toBe(100_000);
+  });
+
+  it("caps against the rounded grand total, not the unrounded one", () => {
+    const totals = calculateInvoiceTotals(
+      invoice({
+        items: [item({ qty: 3, rate: 333.33, taxRate: 0 })],
+        roundOffEnabled: true,
+        advanceMinor: 100_000,
+      }),
+    );
+
+    expect(totals.grandTotalMinor).toBe(100_000);
+    expect(totals.balanceDueMinor).toBe(0);
+  });
+});

@@ -15,7 +15,7 @@ import type { Invoice, InvoiceTotals } from "@/types/invoice";
  */
 export function usePaymentQr(
   invoice: Invoice,
-  totals: Pick<InvoiceTotals, "grandTotalMinor">,
+  totals: Pick<InvoiceTotals, "balanceDueMinor">,
 ): ResolvedPaymentQr | null {
   const [qr, setQr] = useState<ResolvedPaymentQr | null>(null);
 

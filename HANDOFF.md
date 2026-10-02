@@ -105,14 +105,50 @@ The app deliberately boots in **guest mode** when Supabase is unconfigured, so
 it will deploy and run with zero secrets — you just get no sign-in and no cloud
 sync. That is not a crash; don't misread it as a broken deploy.
 
+## Advance paid — read before touching the totals
+
+`Invoice.advanceMinor` is optional and in paise; `0` means "no advance recorded",
+which is what every pre-existing stored invoice normalises to
+(`lib/invoice/normalize.ts`), so old payloads load without a migration.
+
+`calculateInvoiceTotals` derives two more fields and both renderers must show
+the same thing:
+
+| Field | Meaning |
+|---|---|
+| `grandTotalMinor` | The invoice's own value. **Never changed by an advance.** |
+| `advanceMinor` | The recorded advance, **clamped to the grand total**. |
+| `balanceDueMinor` | `grandTotalMinor - advanceMinor`. The real payable. |
+
+An over-typed advance is capped rather than rejected, so a balance can never go
+negative. The editor surfaces that cap as a warning instead of silently
+swallowing it.
+
+What the client sees when `advanceMinor > 0`: a `Total` row, an
+`Advance paid` row prefixed with `-`, and a big box that reads **Balance due**
+instead of **Total due**. "In words" and the payment QR both follow the
+balance, because both describe what is still payable.
+
+These blocks are duplicated in two places and must stay in step:
+`components/invoice/InvoiceTotals.tsx` (preview + JPEG) and the `PdfTotals`
+function in `lib/export/pdf-document.tsx` (PDF). The PDF block carries a comment
+pointing back at the preview; if you add a totals row, add it to both, and
+bump the row count in `measureTotalsBlock` in `lib/invoice/layout-metrics.ts`
+or pagination will not reserve the space.
+
+`measureTotalsBlock` adds 2 rows for an advance (`Total` + `Advance paid`).
+The dashboard list and `toListRow` keep showing `grandTotalMinor`; the list is
+an invoice-value list, not a receivables ledger.
+
 ## Payment QR — read before touching this feature
 
 An invoice can carry a scannable code, printed beside the bank details in the
 **live preview, the PDF and the JPEG**. Two ways to get one:
 
 - `mode: "upi"` — we build a `upi://pay?pa=…&am=…&cu=INR&tn=…` deep link from the
-  invoice's own UPI ID. `includeAmount` locks the grand total in, so the payer
-  only confirms. It re-encodes whenever the total changes.
+  invoice's own UPI ID. `includeAmount` locks the **balance due** in (not the
+  grand total — an advance has already been paid), so the payer only confirms.
+  It re-encodes whenever the balance changes.
 - `mode: "upload"` — a raster image the user supplied.
 
 `mode: "none"` prints nothing.
@@ -162,6 +198,65 @@ The codes were decoded with a real scanner (OpenCV `QRCodeDetector`) out of the
 live preview, out of the PDF rasterised through pdfium, and out of the exported
 JPEG — all three returned the identical payload. If you change the encoder, keep
 that check; a QR that renders but does not scan is invisible in a screenshot.
+
+## Social links — read before touching this feature
+
+`business.socials` (`website`, `instagram`, `linkedin`, `twitter`) prints as
+**clickable icons in two places**, and each icon is a real PDF link annotation
+so the recipient can tap one and land on the profile:
+
+- **`inline` — 9.5pt**, at the end of the **From block**, under the business
+  contact lines, where the old printed link line used to be.
+- **`footer` — 17pt**, on the **right of the page footer**, on the same line as
+  the page number and just below the divider rule. It repeats on every page.
+
+Nothing prints the raw URL or the network name; a blank profile is simply
+absent.
+
+| Concern | File |
+|---|---|
+| Icon geometry (24-unit paths), the two size presets, URL normalisation, `clickableSocials` | `lib/invoice/social-links.ts` |
+| Which profiles are filled, and their labels | `visibleSocialLinks` in `lib/invoice/presence.ts` |
+| PDF icon row (`PdfSocialLinks`, one `<Link>` per profile) | `lib/export/pdf-document.tsx` |
+| Preview / JPEG icon row | `SocialIconRow` in `components/invoice/SocialIconRow.tsx` |
+| Height reserved for the `inline` strip | `measurePartiesBlock` in `lib/invoice/layout-metrics.ts` |
+| Height reserved for the taller `footer` row | `measureFooter`, `SOCIAL_FOOTER_ROW_GROWTH` |
+| Tests | `tests/social-links.test.ts`, `tests/pdf-links.test.ts`, `e2e/social-links.spec.ts` |
+
+### Invariants — do not break these
+
+- **Two renderers, one shape source.** `socialIconShapes` returns plain
+  `{ cx, cy, r }` circles and `d` strings, and both renderers draw from it. The
+  PDF uses react-pdf's `<Svg>/<Path>/<Circle>`; lucide-react cannot be used here
+  because it emits DOM `<svg>` that react-pdf cannot lay out. If you change the
+  glyphs, change the shared source or the preview and the PDF will disagree.
+- **Never pass a raw size.** Both renderers read `SOCIAL_ICON_PRESETS[preset]`
+  for `size`, `box` and `hitSlop`. A hard-coded number in a component is how the
+  two copies drift apart; the presets are the only place a scale may change.
+- **`box` must stay wider than `size`, and `hitSlop` must grow with it.**
+  `hitSlop` is what makes a small icon tappable: the `inline` copy is 9.5pt in a
+  15pt box with `hitSlop: 1.5`. The `footer` copy is 17pt in a 23pt box with
+  `hitSlop: 3`, so the target scales with the glyph.
+- **Icons only, never a printed link line.** The From block used to print
+  `Website example.com · Instagram @handle`. That text is gone and must not
+  come back — a link the reader cannot tap, plus a second copy of a URL the
+  icons already carry. `e2e/social-links.spec.ts` asserts the handles and the
+  network names are absent from the document's text.
+- **A taller footer must be reserved, not just drawn.** `measureFooter` returns
+  `FOOTER_HEIGHT + SOCIAL_FOOTER_ROW_GROWTH` when any profile resolves, because
+  the 23pt icon box shares a row with 6.9pt text. Without the reservation the
+  footer overruns the page and react-pdf drops it — the row simply disappears,
+  with no error.
+- **A stored value is not a URL.** Users type `@handle`, `example.com` or a
+  pasted profile link. `socialHref` reduces all of those to one destination and
+  returns `""` when nothing is left — that is why neither block reserves height
+  for a profile that resolves nowhere. Never interpolate a raw `socials.*` value
+  into `href` or into react-pdf's `src`.
+- **Adding a network touches seven files**: `types/invoice.ts`,
+  `lib/invoice/normalize.ts`, `lib/invoice/defaults.ts`,
+  `lib/invoice/presence.ts` (`SOCIAL_LABELS` is exhaustive, so TypeScript will
+  point at the gap), `lib/validation/invoice-schema.ts`, and both business
+  forms. There is no SQL migration — the profile is one JSONB payload.
 
 ## Silent-failure traps
 

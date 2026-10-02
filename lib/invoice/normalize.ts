@@ -103,6 +103,7 @@ function normalizeClient(value: unknown): ClientParty {
     billingAddress: normalizeAddress(base.billingAddress),
     shippingAddress: normalizeAddress(base.shippingAddress),
     shipToSameAsBillTo: asBoolean(base.shipToSameAsBillTo, true),
+    logoUrl: asString(base.logoUrl),
   };
 }
 
@@ -198,6 +199,7 @@ export function normalizeInvoice(value: unknown): Invoice | null {
     globalDiscountType: DISCOUNT_TYPES.includes(globalDiscountType) ? globalDiscountType : "none",
     globalDiscountValue: asNumber(value.globalDiscountValue, 0),
     shippingMinor: asNumber(value.shippingMinor, 0),
+    advanceMinor: asNumber(value.advanceMinor, 0),
     roundOffEnabled: asBoolean(value.roundOffEnabled, true),
     amountInWordsEnabled: asBoolean(value.amountInWordsEnabled, true),
     notes: asString(value.notes),
@@ -206,6 +208,7 @@ export function normalizeInvoice(value: unknown): Invoice | null {
     signature: normalizeSignature(value.signature),
     brand: normalizeBrand(value.brand),
     logoOverrideUrl: asString(value.logoOverrideUrl),
+    businessProfileId: asString(value.businessProfileId),
     createdAt: asString(value.createdAt, base.createdAt),
     updatedAt: asString(value.updatedAt, base.updatedAt),
   };

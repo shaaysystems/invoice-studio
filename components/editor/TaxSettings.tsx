@@ -157,7 +157,7 @@ export function TaxSettings() {
         </p>
       </Disclosure>
 
-      <Disclosure title="Shipping, round-off & totals">
+      <Disclosure title="Shipping, advance, round-off & totals">
         <Field label="Shipping (₹)" optional>
           {(p) => (
             <Input
@@ -171,6 +171,40 @@ export function TaxSettings() {
           )}
         </Field>
 
+        <Field
+          label="Advance already paid (₹)"
+          optional
+          hint="If the client has already paid you, enter that amount. It is deducted from the invoice total and the balance becomes the amount due."
+        >
+          {(p) => (
+            <Input
+              {...p}
+              type="number"
+              min="0"
+              step="0.01"
+              value={minorToInputValue(invoice.advanceMinor)}
+              onChange={(e) => patchAdjustments({ advanceMinor: rupeesToMinor(e.target.value) })}
+            />
+          )}
+        </Field>
+
+        {totals.advanceMinor > 0 ? (
+          <div className="space-y-1 rounded-lg bg-shell-50 px-3 py-2.5 text-[11px] text-shell-500">
+            <p>
+              Invoice total <strong className="tabular text-shell-700">{formatINR(totals.grandTotalMinor)}</strong>
+              {" − "}
+              advance <strong className="tabular text-shell-700">{formatINR(totals.advanceMinor)}</strong> ={" "}
+              <strong className="tabular text-shell-700">balance {formatINR(totals.balanceDueMinor)}</strong>.
+            </p>
+            {invoice.advanceMinor > totals.grandTotalMinor ? (
+              <Alert tone="warning">
+                The advance is more than the invoice total, so it has been capped at {formatINR(totals.grandTotalMinor)}{" "}
+                and the balance is {formatINR(0)}.
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex items-center justify-between rounded-lg bg-shell-50 px-3 py-2.5">
           <span className="text-xs font-medium text-shell-700">Round off to the nearest rupee</span>
           <Switch
@@ -181,13 +215,14 @@ export function TaxSettings() {
         </div>
 
         <div className="flex items-center justify-between rounded-lg bg-shell-50 px-3 py-2.5">
-          <span className="text-xs font-medium text-shell-700">Show the amount in words</span>
+          <span className="text-xs font-medium text-shell-700">Round off to the nearest rupee</span>
           <Switch
-            checked={invoice.amountInWordsEnabled}
-            onChange={(amountInWordsEnabled) => patchAdjustments({ amountInWordsEnabled })}
-            label="Show the amount in words"
+            checked={invoice.roundOffEnabled}
+            onChange={(roundOffEnabled) => patchAdjustments({ roundOffEnabled })}
+            label="Round off to the nearest rupee"
           />
         </div>
+
       </Disclosure>
     </SectionCard>
   );

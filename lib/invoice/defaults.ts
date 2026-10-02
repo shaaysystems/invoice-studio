@@ -1,6 +1,11 @@
 import { addDaysISO, todayISO } from "@/lib/formatting/inr";
 import { defaultBrand } from "@/lib/brand/presets";
-import { defaultNumberingProfile } from "@/lib/invoice/numbering";
+import {
+  defaultNumberingProfile,
+  generateInvoiceNumber,
+  numberingConfigFromProfile,
+  rollNumberingIfYearChanged,
+} from "@/lib/invoice/numbering";
 import { QTY_SCALE, rupeesToMinor, scaleQuantity } from "@/lib/money";
 import type { BusinessProfile } from "@/types/business";
 import type { Address, Invoice, InvoiceItem, PaymentQr, SocialLinks } from "@/types/invoice";
@@ -93,11 +98,13 @@ export function createEmptyInvoice(overrides: Partial<Invoice> = {}): Invoice {
       billingAddress: emptyAddress(),
       shippingAddress: emptyAddress(),
       shipToSameAsBillTo: true,
+      logoUrl: "",
     },
     items: [createEmptyItem()],
     globalDiscountType: "none",
     globalDiscountValue: 0,
     shippingMinor: 0,
+    advanceMinor: 0,
     roundOffEnabled: true,
     amountInWordsEnabled: true,
     notes: DEFAULT_NOTES,
@@ -112,6 +119,7 @@ export function createEmptyInvoice(overrides: Partial<Invoice> = {}): Invoice {
     signature: { imageUrl: "", name: "", designation: "" },
     brand: defaultBrand(),
     logoOverrideUrl: "",
+    businessProfileId: "",
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -127,6 +135,7 @@ export function invoiceFromProfile(profile: BusinessProfile, number: string): In
   return {
     ...base,
     number,
+    businessProfileId: profile.id,
     business: { ...profile.party, address: { ...profile.party.address }, socials: { ...profile.party.socials } },
     payment: { ...profile.payment, bank: { ...profile.payment.bank }, qr: { ...emptyQr(), ...profile.payment.qr } },
     signature: { ...profile.signature },
@@ -134,6 +143,58 @@ export function invoiceFromProfile(profile: BusinessProfile, number: string): In
     notes: profile.defaultNotes,
     items: [createEmptyItem({ taxRate: profile.defaultTaxRate })],
   };
+}
+
+/**
+ * Builds a fresh invoice from a saved profile, including the next invoice
+ * number. The financial year is rolled here (not only on save) so a profile
+ * written last year cannot hand out a stale sequence.
+ */
+export function invoiceFromSavedProfile(profile: BusinessProfile): Invoice {
+  const { numbering } = rollNumberingIfYearChanged(profile.numbering);
+  return invoiceFromProfile(profile, generateInvoiceNumber(numberingConfigFromProfile(numbering)));
+}
+
+/**
+ * Re-applies a saved profile onto an invoice that is already being edited.
+ * Only the sender-owned fields are touched — the client, the line items and
+ * the invoice number belong to this document and are left untouched.
+ */
+export function applyProfileToInvoice(invoice: Invoice, profile: BusinessProfile): Invoice {
+  return {
+    ...invoice,
+    businessProfileId: profile.id,
+    business: {
+      ...profile.party,
+      address: { ...profile.party.address },
+      socials: { ...profile.party.socials },
+    },
+    payment: {
+      ...profile.payment,
+      bank: { ...profile.payment.bank },
+      qr: { ...invoice.payment.qr, ...profile.payment.qr },
+    },
+    signature: { ...profile.signature },
+    terms: profile.defaultTerms,
+    notes: profile.defaultNotes,
+  };
+}
+
+/**
+ * True when the invoice already carries sender details of its own, so applying
+ * a saved profile would overwrite real work instead of filling an empty form.
+ */
+export function invoiceHasOwnBusinessDetails(invoice: Invoice): boolean {
+  return Boolean(
+    invoice.business.name.trim() ||
+      invoice.business.gstin.trim() ||
+      invoice.business.pan.trim() ||
+      invoice.business.email.trim() ||
+      invoice.business.phone.trim() ||
+      invoice.business.address.line1.trim() ||
+      invoice.payment.upiId.trim() ||
+      invoice.payment.bank.accountNumber.trim(),
+  );
 }
 
 /** Starting point for the business-profile editor — valid against the Zod schema. */
@@ -219,6 +280,7 @@ export function createDemoInvoice(): Invoice {
       },
       shippingAddress: emptyAddress(),
       shipToSameAsBillTo: true,
+      logoUrl: "",
     },
     items: [
       createEmptyItem({

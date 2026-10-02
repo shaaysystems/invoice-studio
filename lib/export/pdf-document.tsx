@@ -1,19 +1,26 @@
 import {
+  Circle,
   Document,
   Font,
   Image,
+  Link,
   Page,
+  Path,
   StyleSheet,
+  Svg,
   Text,
   View,
 } from "@react-pdf/renderer";
 /* eslint-disable jsx-a11y/alt-text -- react-pdf <Image> renders a PDF XObject, not a DOM <img> */
 import type { ReactNode } from "react";
 import type { Style, StyleProp } from "@react-pdf/types";
+
+/** `@react-pdf/types` re-exports only `Style`, so the value set is read off it. */
+type JustifyContent = NonNullable<Style["justifyContent"]>;
 import { buildInvoiceTokens, type InvoiceTokens } from "@/lib/brand/tokens";
 import { amountToWordsINR, formatINR, formatInvoiceDate, formatPercent, formatQuantity } from "@/lib/formatting/inr";
 import { unscaleQuantity } from "@/lib/money";
-import { PAGE, QR_SIZE } from "@/lib/invoice/layout-metrics";
+import { CLIENT_LOGO, PAGE, QR_SIZE } from "@/lib/invoice/layout-metrics";
 import { paginateInvoiceItems } from "@/lib/invoice/paginate";
 import {
   effectiveClientAddress,
@@ -26,8 +33,15 @@ import {
   hasSignatureContent,
   partyLines,
   resolveLogoUrl,
-  visibleSocialLinks,
 } from "@/lib/invoice/presence";
+import {
+  SOCIAL_ICON_PRESETS,
+  SOCIAL_ICON_STROKE,
+  SOCIAL_ICON_VIEWBOX,
+  type SocialIconPreset,
+  clickableSocials,
+  socialIconShapes,
+} from "@/lib/invoice/social-links";
 import { resolvePaymentQr, type ResolvedPaymentQr } from "@/lib/payment/qr";
 import type { Invoice, InvoiceTotals } from "@/types/invoice";
 let fontState: "unknown" | "ready" | "fallback" = "unknown";
@@ -263,17 +277,99 @@ export function InvoicePdfDocument({ invoice, totals, useInter }: PdfProps) {
             }}
           >
             <Text style={{ fontSize: 6.9, color: tokens.inkSubtle }}>{invoice.business.name}</Text>
-            {pageCount > 1 ? (
-              <Text style={{ fontSize: 6.9, color: tokens.inkSubtle }}>
-                Page {page.pageNumber} of {pageCount}
-              </Text>
-            ) : (
-              <Text />
-            )}
+            {/* The icons ride the same line as the page number, on the right, in
+                a taller box that sets the row's height when they are present. */}
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <PdfSocialLinks socials={invoice.business.socials} tokens={tokens} preset="footer" align="flex-end" />
+              {pageCount > 1 ? (
+                <Text style={{ fontSize: 6.9, color: tokens.inkSubtle, marginLeft: 6 }}>
+                  Page {page.pageNumber} of {pageCount}
+                </Text>
+              ) : (
+                <Text />
+              )}
+            </View>
           </View>
         </Page>
       ))}
     </Document>
+  );
+}
+
+/**
+ * The clickable social strip. It replaces the text link line that used to sit
+ * under the From block, so a profile shows up as an icon that opens its own
+ * URL. It is also printed, at the `footer` scale, on the right of the page
+ * footer rule.
+ *
+ * Mirrored by `SocialIconRow` in `components/invoice/SocialIconRow.tsx`; both
+ * draw from `socialIconShapes` and read the same presets in
+ * `lib/invoice/social-links.ts`, so a change to the glyphs or the scale has to
+ * be made there.
+ */
+function PdfSocialLinks({
+  socials,
+  tokens,
+  preset = "inline",
+  align = "flex-start",
+}: {
+  socials: Invoice["business"]["socials"];
+  tokens: InvoiceTokens;
+  preset?: SocialIconPreset;
+  align?: JustifyContent;
+}) {
+  const links = clickableSocials(socials);
+  if (!links.length) return null;
+
+  const { size, box, hitSlop, margin } = SOCIAL_ICON_PRESETS[preset];
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: align,
+        marginTop: margin || undefined,
+      }}
+    >
+      {links.map((link) => (
+        <Link key={link.key} src={link.href} hitSlop={hitSlop}>
+          <View
+            style={{
+              width: box,
+              height: box,
+              marginRight: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Svg viewBox={SOCIAL_ICON_VIEWBOX} style={{ width: size, height: size }}>
+              {socialIconShapes(link.key).map((shape, index) =>
+                shape.kind === "circle" ? (
+                  <Circle
+                    key={index}
+                    cx={shape.cx}
+                    cy={shape.cy}
+                    r={shape.r}
+                    stroke={tokens.inkSubtle}
+                    strokeWidth={SOCIAL_ICON_STROKE}
+                  />
+                ) : (
+                  <Path
+                    key={index}
+                    d={shape.d}
+                    stroke={tokens.inkSubtle}
+                    strokeWidth={SOCIAL_ICON_STROKE}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ),
+              )}
+            </Svg>
+          </View>
+        </Link>
+      ))}
+    </View>
   );
 }
 
@@ -336,7 +432,6 @@ function PdfParties({ invoice, tokens }: { invoice: Invoice; tokens: InvoiceToke
     ["GSTIN", business.gstin],
     ["PAN", business.pan],
   ]);
-  const socials = visibleSocialLinks(business.socials);
   const clientContact = partyLines([
     ["Phone", client.phone],
     ["Email", client.email],
@@ -380,16 +475,27 @@ function PdfParties({ invoice, tokens }: { invoice: Invoice; tokens: InvoiceToke
             {label} · {value}
           </Text>
         ))}
-        {socials.length ? (
-          <Text style={{ marginTop: 3, fontSize: 7.6, color: tokens.inkSubtle }}>
-            {socials.map((s) => `${s.label} ${s.value}`).join("  ·  ")}
-          </Text>
-        ) : null}
+        <PdfSocialLinks socials={business.socials} tokens={tokens} />
       </View>
 
       <View style={{ width: "38%", paddingRight: 14 }}>
         <Label>Bill to</Label>
-        <Text style={{ fontSize: 11, fontWeight: 700, color: tokens.ink }}>{client.name}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {client.logoUrl.trim() ? (
+            <Image
+              src={client.logoUrl}
+              style={{
+                maxWidth: CLIENT_LOGO.width,
+                maxHeight: CLIENT_LOGO.height,
+                objectFit: "contain",
+                marginRight: 8,
+              }}
+            />
+          ) : null}
+          <Text style={{ fontSize: 11, fontWeight: 700, color: tokens.ink, flexShrink: 1 }}>
+            {client.name}
+          </Text>
+        </View>
         {hasClientAddress(invoice)
           ? addr(client.billingAddress).map((line) => (
               <Text key={line} style={{ fontSize: 8.2, color: tokens.inkMuted, lineHeight: 1.38 }}>
@@ -441,11 +547,15 @@ function PdfTotals({
   const isGst = invoice.taxMode === "gst";
   const isIntra = invoice.gstScope === "intra";
   const mixed = totals.buckets.length > 1;
+  const hasAdvance = totals.advanceMinor > 0;
+  const payableMinor = hasAdvance ? totals.balanceDueMinor : totals.grandTotalMinor;
 
-  const Row = ({ label, value }: { label: string; value: string }) => (
+  const Row = ({ label, value, strong }: { label: string; value: string; strong?: boolean }) => (
     <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 2.6 }}>
-      <Text style={{ fontSize: 8.4, color: tokens.inkMuted }}>{label}</Text>
-      <Text style={{ fontSize: 8.8, fontWeight: 500, color: tokens.ink }}>{value}</Text>
+      <Text style={{ fontSize: 8.4, color: strong ? tokens.ink : tokens.inkMuted, fontWeight: strong ? 600 : 400 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: 8.8, fontWeight: strong ? 600 : 500, color: tokens.ink }}>{value}</Text>
     </View>
   );
 
@@ -488,12 +598,17 @@ function PdfTotals({
           />
         ) : null}
 
+        {/* Mirrors components/invoice/InvoiceTotals.tsx exactly: keep these
+            two blocks in step or a PDF stops matching the preview. */}
+        {hasAdvance ? <Row label="Total" value={money(totals.grandTotalMinor)} strong /> : null}
+        {hasAdvance ? <Row label="Advance paid" value={`- ${money(totals.advanceMinor)}`} /> : null}
+
         <View style={{ marginTop: 9, paddingVertical: 11, paddingHorizontal: 13, borderRadius: 4, backgroundColor: tokens.totalBg }}>
           <Text style={{ ...styles.label, fontWeight: 600, color: tokens.totalInk, opacity: 0.85 }}>
-            Total due
+            {hasAdvance ? "Balance due" : "Total due"}
           </Text>
           <Text style={{ fontSize: 22, fontWeight: 700, color: tokens.totalInk, marginTop: 2 }}>
-            {money(totals.grandTotalMinor)}
+            {money(payableMinor)}
           </Text>
         </View>
 
@@ -501,7 +616,7 @@ function PdfTotals({
           <View style={{ marginTop: 7 }}>
             <Text style={{ ...styles.label, color: tokens.inkSubtle }}>In words</Text>
             <Text style={{ fontSize: 7.6, color: tokens.inkMuted, lineHeight: 1.4 }}>
-              {amountToWordsINR(totals.grandTotalMinor)}
+              {amountToWordsINR(payableMinor)}
             </Text>
           </View>
         ) : null}
@@ -516,7 +631,7 @@ function PdfPayment({
   tokens,
 }: {
   invoice: Invoice;
-  totals: Pick<InvoiceTotals, "grandTotalMinor">;
+  totals: Pick<InvoiceTotals, "balanceDueMinor">;
   tokens: InvoiceTokens;
 }) {
   const showPayment = hasAnyPayment(invoice);

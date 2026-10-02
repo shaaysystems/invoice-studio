@@ -134,6 +134,7 @@ function InvoicePage({
         pageNumber={page.pageNumber}
         pageCount={pageCount}
         businessName={invoice.business.name || ""}
+        socials={invoice.business.socials}
       />
     </article>
   );

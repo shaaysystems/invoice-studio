@@ -40,6 +40,11 @@ export interface ClientParty {
   billingAddress: Address;
   shippingAddress: Address;
   shipToSameAsBillTo: boolean;
+  /**
+   * Optional logo of the party being invoiced, printed in the "Bill to" block.
+   * Per-invoice only — there is no client profile to carry a default from.
+   */
+  logoUrl: string;
 }
 
 /** quantity is stored scaled by QTY_SCALE (1000). rateMinor is paise. */
@@ -122,6 +127,13 @@ export interface Invoice {
   globalDiscountType: DiscountType;
   globalDiscountValue: number;
   shippingMinor: number;
+  /**
+   * Advance already received from the client, in paise. Zero means "no advance
+   * recorded" and is what every invoice that predates this field normalises to.
+   * It is capped at the grand total when totals are calculated, so a balance
+   * can never go negative.
+   */
+  advanceMinor: number;
   roundOffEnabled: boolean;
   amountInWordsEnabled: boolean;
   notes: string;
@@ -134,6 +146,13 @@ export interface Invoice {
    * read it through `resolveLogoUrl` rather than directly.
    */
   logoOverrideUrl: string;
+  /**
+   * The saved business profile this invoice was started from, or "" for a
+   * blank one. Recorded on the document so invoice numbers stay unique per
+   * business even after the profile is renamed or deleted. Never read it back
+   * to prefill fields — the invoice carries its own copy of everything.
+   */
+  businessProfileId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -171,6 +190,10 @@ export interface InvoiceTotals {
   shippingMinor: number;
   roundOffMinor: number;
   grandTotalMinor: number;
+  /** The recorded advance, clamped to `grandTotalMinor`. */
+  advanceMinor: number;
+  /** What the client still owes: `grandTotalMinor - advanceMinor`. */
+  balanceDueMinor: number;
   buckets: TaxBucket[];
 }
 

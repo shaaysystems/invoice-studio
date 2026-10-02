@@ -5,11 +5,12 @@ import {
   hasBusinessAddress,
   hasClientAddress,
   partyLines,
-  visibleSocialLinks,
 } from "@/lib/invoice/presence";
+import { CLIENT_LOGO } from "@/lib/invoice/layout-metrics";
 import type { InvoiceTokens } from "@/lib/brand/tokens";
 import type { Address, Invoice } from "@/types/invoice";
-import { SectionLabel, TextLine } from "./primitives";
+import { SafeImage, SectionLabel, TextLine } from "./primitives";
+import { SocialIconRow } from "./SocialIconRow";
 
 function addressLines(address: Address): string[] {
   return formatAddressLines(address);
@@ -30,7 +31,6 @@ export function PartiesBlock({ invoice, tokens }: Props) {
     ["GSTIN", business.gstin],
     ["PAN", business.pan],
   ]);
-  const socials = visibleSocialLinks(business.socials);
 
   const clientContact = partyLines([
     ["Phone", client.phone],
@@ -73,25 +73,30 @@ export function PartiesBlock({ invoice, tokens }: Props) {
             <TextLine key={label} value={`${label} · ${value}`} color={tokens.inkMuted} size={8} />
           ))}
         </div>
-        {socials.length ? (
-          <TextLine
-            value={socials.map((s) => `${s.label} ${s.value}`).join("  ·  ")}
-            color={tokens.inkSubtle}
-            size={7.6}
-            className="mt-1"
-          />
-        ) : null}
+        <SocialIconRow socials={business.socials} tokens={tokens} />
       </div>
 
       {/* ---------- Bill to ---------- */}
       <div style={{ minWidth: 0 }}>
         <SectionLabel color={tokens.inkSubtle}>Bill to</SectionLabel>
-        <TextLine
-          value={client.name || "Client name"}
-          color={client.name ? tokens.ink : tokens.inkSubtle}
-          size={11}
-          weight={700}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "8pt" }}>
+          {client.logoUrl.trim() ? (
+            <SafeImage
+              src={client.logoUrl}
+              maxWidth={CLIENT_LOGO.width}
+              maxHeight={CLIENT_LOGO.height}
+              alt={`${client.name || "Client"} logo`}
+            />
+          ) : null}
+          <div style={{ minWidth: 0, flex: "1 1 auto" }}>
+            <TextLine
+              value={client.name || "Client name"}
+              color={client.name ? tokens.ink : tokens.inkSubtle}
+              size={11}
+              weight={700}
+            />
+          </div>
+        </div>
         <div style={{ marginTop: "3pt" }}>
           {hasClientAddress(invoice)
             ? addressLines(client.billingAddress).map((line) => (

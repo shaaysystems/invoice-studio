@@ -9,6 +9,7 @@ import type { InvoiceTokens } from "@/lib/brand/tokens";
 import type { Invoice, InvoiceTotals } from "@/types/invoice";
 import { SafeImage, SectionLabel, TextLine } from "./primitives";
 import { PaymentQrBlock } from "./PaymentQrBlock";
+import { SocialIconRow } from "./SocialIconRow";
 
 interface BaseProps {
   invoice: Invoice;
@@ -16,8 +17,8 @@ interface BaseProps {
 }
 
 interface Props extends BaseProps {
-  /** Grand total, needed to embed the amount in a generated QR code. */
-  totals: Pick<InvoiceTotals, "grandTotalMinor">;
+  /** Balance due, needed to embed the amount in a generated QR code. */
+  totals: Pick<InvoiceTotals, "balanceDueMinor">;
 }
 
 /** Blank-line-free paragraphs, so authored newlines still read as a list. */
@@ -177,11 +178,13 @@ export function InvoicePageFooter({
   pageNumber,
   pageCount,
   businessName,
+  socials,
 }: {
   tokens: InvoiceTokens;
   pageNumber: number;
   pageCount: number;
   businessName: string;
+  socials: Invoice["business"]["socials"];
 }) {
   return (
     <footer
@@ -189,15 +192,24 @@ export function InvoicePageFooter({
         marginTop: "auto",
         paddingTop: "9pt",
         borderTop: `0.5pt solid ${tokens.rule}`,
-        display: "flex",
-        justifyContent: "space-between",
         color: tokens.inkSubtle,
         fontSize: "6.9pt",
       }}
     >
-      <span>{businessName}</span>
-      {/* Page numbers appear only on multi-page documents. */}
-      {pageCount > 1 ? <span className="tabular">Page {pageNumber} of {pageCount}</span> : <span />}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>{businessName}</span>
+        {/* The icons ride the same line as the page number, on the right, in a
+            taller box that sets the row's height when they are present. */}
+        <span style={{ display: "flex", alignItems: "center" }}>
+          <SocialIconRow socials={socials} tokens={tokens} preset="footer" align="flex-end" />
+          {/* Page numbers appear only on multi-page documents. */}
+          {pageCount > 1 ? (
+            <span className="tabular" style={{ marginLeft: "6pt" }}>
+              Page {pageNumber} of {pageCount}
+            </span>
+          ) : null}
+        </span>
+      </div>
     </footer>
   );
 }

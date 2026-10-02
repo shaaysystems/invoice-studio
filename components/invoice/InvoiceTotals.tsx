@@ -41,6 +41,11 @@ export function InvoiceTotalsBlock({ invoice, totals, tokens }: Props) {
       ? `Discount (${formatPercent(invoice.globalDiscountValue)})`
       : "Discount";
 
+  // With an advance recorded the box shows what is still owed; without one it
+  // is simply the invoice total, exactly as before.
+  const hasAdvance = totals.advanceMinor > 0;
+  const payableMinor = hasAdvance ? totals.balanceDueMinor : totals.grandTotalMinor;
+
   return (
     <section data-totals-block style={{ display: "flex", justifyContent: "flex-end", marginTop: "16pt" }}>
       <div style={{ width: "252pt", maxWidth: "100%" }}>
@@ -83,7 +88,18 @@ export function InvoiceTotalsBlock({ invoice, totals, tokens }: Props) {
           />
         ) : null}
 
-        {/* Grand total — the largest number on the page. */}
+        {/* A recorded advance turns the big box into a balance, and needs the
+            invoice total shown above it to stay auditable. */}
+        {hasAdvance ? (
+          <Row label="Total" value={formatINR(totals.grandTotalMinor)} tokens={tokens} strong />
+        ) : null}
+
+        {hasAdvance ? (
+          <Row label="Advance paid" value={`- ${formatINR(totals.advanceMinor)}`} tokens={tokens} />
+        ) : null}
+
+        {/* Grand total — the largest number on the page, or the balance when an
+            advance was already received. */}
         <div
           style={{
             marginTop: "9pt",
@@ -94,13 +110,13 @@ export function InvoiceTotalsBlock({ invoice, totals, tokens }: Props) {
           }}
         >
           <div className="tracked-label" style={{ fontSize: "6.9pt", fontWeight: 600, opacity: 0.82 }}>
-            Total due
+            {hasAdvance ? "Balance due" : "Total due"}
           </div>
           <div
             className="tabular"
             style={{ fontSize: "22pt", fontWeight: 700, lineHeight: 1.12, letterSpacing: "-0.015em" }}
           >
-            {formatINR(totals.grandTotalMinor)}
+            {formatINR(payableMinor)}
           </div>
         </div>
 
@@ -109,7 +125,7 @@ export function InvoiceTotalsBlock({ invoice, totals, tokens }: Props) {
             <span className="tracked-label" style={{ fontSize: "6.6pt", color: tokens.inkSubtle }}>
               In words
             </span>
-            <div>{amountToWordsINR(totals.grandTotalMinor)}</div>
+            <div>{amountToWordsINR(payableMinor)}</div>
           </div>
         ) : null}
       </div>

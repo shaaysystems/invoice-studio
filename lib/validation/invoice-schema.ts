@@ -58,6 +58,7 @@ export const clientPartySchema = z.object({
   billingAddress: addressSchema,
   shippingAddress: addressSchema,
   shipToSameAsBillTo: z.boolean(),
+  logoUrl: imageUrl,
 });
 
 const isoDate = z
@@ -141,6 +142,7 @@ export const invoiceSchema = z
     globalDiscountType: discountTypeSchema,
     globalDiscountValue: z.number().min(0, "A discount cannot be negative.").max(100_000_000_000),
     shippingMinor: z.number().int().min(0, "Shipping cannot be negative.").max(100_000_000_000),
+    advanceMinor: z.number().int().min(0, "An advance cannot be negative.").max(100_000_000_000),
     roundOffEnabled: z.boolean(),
     amountInWordsEnabled: z.boolean(),
     notes: z.string().trim().max(600),
@@ -153,6 +155,7 @@ export const invoiceSchema = z
     }),
     brand: brandSchema,
     logoOverrideUrl: imageUrl,
+    businessProfileId: z.string().trim().max(64),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

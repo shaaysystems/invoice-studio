@@ -64,7 +64,7 @@ export function InvoiceEditor({
       );
       return;
     }
-    const result = await saveInvoiceAction(invoice, "sent");
+    const result = await saveInvoiceAction(invoice, "sent", invoice.businessProfileId || null);
     setSaveMessage(result.ok ? "Invoice saved." : result.error ?? "We couldn't save this invoice.");
   }
 
@@ -139,7 +139,7 @@ export function InvoiceEditor({
           <div className="space-y-4 p-4 pb-28">
             <Panel active={activeSection === "parties"}>
               <BusinessForm authenticated={authenticated} />
-              <ClientForm />
+              <ClientForm authenticated={authenticated} />
             </Panel>
             <Panel active={activeSection === "details"}>
               <InvoiceDetailsForm />
