@@ -1,5 +1,10 @@
 # Handoff
 
+> **Superseded for current work.** The app is now deployed and live at
+> https://shahin-invoice-studio.vercel.app. See [`NEXT-STEPS.md`](NEXT-STEPS.md)
+> for what remains. The notes below are the design/decision record from the
+> payment-QR session and are still accurate.
+
 Last updated **after the payment-QR session (28 Sep 2026)**. Resume from here.
 
 ## How to resume cheaply — read this first
