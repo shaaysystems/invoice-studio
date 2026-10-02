@@ -33,3 +33,4 @@ next-env.d.ts
 # builds hermetic instead of depending on a CDN being reachable at build time.
 supabase/.temp
 supabase/.branches
+.env*
