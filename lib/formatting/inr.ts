@@ -50,6 +50,19 @@ export function formatInvoiceDate(iso: string, style: "long" | "short" = "long")
   return `${day} ${monthName} ${year}`;
 }
 
+/**
+ * Same as `formatInvoiceDate`, but accepts a full ISO timestamp and keeps only
+ * the calendar date the string already carries. Rendering it with `Date` or
+ * `toLocaleDateString` would read the *runtime's* timezone, which differs
+ * between the server and the visitor's browser.
+ */
+export function formatISODate(timestamp: string | null | undefined): string {
+  if (!timestamp) return "";
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(timestamp);
+  if (!match) return "";
+  return formatInvoiceDate(match[1] ?? "", "long");
+}
+
 export function todayISO(): string {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);

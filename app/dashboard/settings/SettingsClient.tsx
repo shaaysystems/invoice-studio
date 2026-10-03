@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button, SectionCard } from "@/components/ui";
 import { AppShell } from "@/components/dashboard/AppShell";
 import { clearLocalData, localStorageKeys } from "@/lib/browser-reset";
+import { formatISODate } from "@/lib/formatting/inr";
 
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -71,13 +72,7 @@ export function SettingsClient({
               </Row>
               {memberSince ? (
                 <Row title="Member since">
-                  <span className="text-sm text-shell-700">
-                    {new Date(memberSince).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </span>
+                  <span className="text-sm text-shell-700">{formatISODate(memberSince)}</span>
                 </Row>
               ) : null}
               <Row title={`Invoices on this account (${invoiceCount})`}>

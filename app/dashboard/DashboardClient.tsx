@@ -35,6 +35,7 @@ export function DashboardClient({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [notice, setNotice] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<string | null>(null);
   // Hidden render target so exports work directly from the list.
   const [exportTarget, setExportTarget] = useState<Invoice | null>(null);
 
@@ -45,11 +46,9 @@ export function DashboardClient({
     );
   }, [authenticated]);
 
-  const greeting = useMemo(() => {
+  useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
+    setGreeting(hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening");
   }, []);
 
   const filtered = useMemo(() => {
@@ -126,7 +125,7 @@ export function DashboardClient({
   return (
     <AppShell authenticated={authenticated}>
       <div className="px-6 py-8">
-        <p className="text-xs text-shell-500">{greeting}</p>
+        <p className="text-xs text-shell-500">{greeting ?? "\u00a0"}</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-shell-900">Create a new invoice</h1>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
